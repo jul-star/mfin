@@ -10,9 +10,9 @@ int debug_run(int argc, char **argv);
 
 int main(int argc, char **argv)
 {
-	test(argc, argv);
+//	test(argc, argv);
 //    debug_run(argc, argv);
-//	run(argc, argv);
+	run(argc, argv);
 
 }
 
