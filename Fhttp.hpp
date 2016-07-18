@@ -82,8 +82,9 @@ const char * getResponse(const char *v, const char *dir)
     fseek(fd,0L,SEEK_END);
     int fileSize = ftell(fd);
     rewind(fd);
-    char* response = (char*)malloc(sizeof(char)*fileSize);
-    fread(response,fileSize, sizeof(char),fd);
+    char* response = (char*)malloc(sizeof(char)*(fileSize+okLen+1));
+    memcpy(response, ok_response, okLen);
+    fread(response+okLen,fileSize, sizeof(char),fd);
     fclose(fd);
 
 //  printf("parseHttpGet:Answer: %s\t(%d)\n", answer, len);
@@ -241,6 +242,6 @@ int test9()
     int len = 0;
     char *out =(char*)getResponse(in,dir);
     len = strlen(out);
-    printf("***Test_04_1 ***\n in=%s, out=%s, dir=%s\n\n",in, out,dir);
+    printf("***Test_04_1 ***\n out=%s, dir=%s\n\n", out,dir);
     return len;
 }
