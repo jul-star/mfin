@@ -54,7 +54,12 @@ const char * getResponse(const char *v, const char *dir)
     j=0;
     for (i = 0; i<http-get-4;++i)
     {
-        if (rawUrl[i] != ' ') { url[j]=rawUrl[i];++j;}
+        if (rawUrl[i] != ' ')
+        {
+            if (rawUrl[i] == '?') { break; }
+            url[j]=rawUrl[i];
+            ++j;
+        }
     }
  //   printf("url=!%s!\n",url);
     // *** NO PAGE ***
