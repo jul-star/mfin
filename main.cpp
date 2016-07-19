@@ -14,8 +14,8 @@ int main(int argc, char **argv)
 {
 //	test(argc, argv);
  //  debug_run(argc, argv);
- //  debug_run_hard();
-	run(argc, argv);
+   debug_run_hard();
+//	run(argc, argv);
 
 }
 

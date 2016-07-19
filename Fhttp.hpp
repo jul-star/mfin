@@ -3,6 +3,7 @@
 #include <string.h>
 
 
+
 const char * getResponse(const char *v, const char *dir);
 int testParserGet();
 const char* test0(char *v, char *dir);
@@ -81,13 +82,26 @@ const char * getResponse(const char *v, const char *dir)
     {
         return bad_request_response;
     }
-
+                    // ***The only OK***
     fseek(fd,0L,SEEK_END);
     int fileSize = ftell(fd);
     rewind(fd);
-    char* response = (char*)malloc(sizeof(char)*(fileSize+okLen+1));
-    memcpy(response, ok_response, okLen);
-    fread(response+okLen,fileSize, sizeof(char),fd);
+    char* ok=(char*)"HTTP/1.0 200 OK\r\nContent-length: ";
+    int counter = strlen(ok);
+    char *cnt = (char*)"\r\nContent-Type: text/html\r\n\r\n";
+    char fsz[32];
+    memset(fsz,'\0',32);
+    sprintf(fsz, "%d",fileSize);
+   // "Content-type: text/html"
+    // "\r\n\r\n";
+
+    char* response = (char*)malloc(sizeof(char)*(fileSize+strlen(ok)+ strlen(fsz) +strlen(cnt)+1));
+    memcpy(response, ok, counter);
+    memcpy(response+counter, fsz, strlen(fsz));
+    counter += strlen(fsz);
+    memcpy(response+counter, cnt, strlen(cnt));
+    counter += strlen(cnt);
+    fread(response+counter,fileSize, sizeof(char),fd);
     fclose(fd);
 
 //  printf("parseHttpGet:Answer: %s\t(%d)\n", answer, len);

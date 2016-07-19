@@ -88,8 +88,7 @@ int server(struct input_arg *arg,int runType)
 //          int maxThread = omp_get_max_threads();
 //          int threads;
 //          threads = (N>maxThread) ? maxTread : N
-          omp_set_num_threads(N);
-        #pragma omp for
+        #pragma omp for num_threads(N)
         for(i = 0; i < N; i++)
         {
 //           printf("th-n:%d\n",omp_get_thread_num());
