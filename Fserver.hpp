@@ -18,13 +18,15 @@ int set_nonblock(int sct);
 int socket_up(int skt);
 int timeout_recv(int skt);
 int timeout_send(int skt);
-int GET();
-int MIME();
 int check_errors(struct epoll_event *ee);
+void test_parallel();
+void printHostInfo(struct sockaddr *Addr, int Len, int fd);
 
 int server(struct input_arg *arg,int runType)
 {
-    if (runType) { daemon(1,0); }
+    test_parallel();
+
+    if (runType) { daemon(0,0); }
 // domain, type, protocol
     int sServer = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
     if (sServer == -1 )
@@ -32,6 +34,7 @@ int server(struct input_arg *arg,int runType)
         perror("socket");
         exit (0);
     }
+
     // bind
     struct sockaddr_in sa;
     sa.sin_family = AF_INET;
@@ -62,7 +65,7 @@ int server(struct input_arg *arg,int runType)
 
     // add server
     EventServer.data.fd = sServer;
-    EventServer.events = EPOLLIN; // | EPOLLET;  /// | EPOLLET; ///TODO: FIND OUT
+    EventServer.events = EPOLLIN; // | EPOLLET | EPOLLONESHOT; // | EPOLLET;  /// | EPOLLET; ///TODO: FIND OUT
 
     // register Server in EPoll
     int RegServ = epoll_ctl(EPoll, EPOLL_CTL_ADD, sServer, &EventServer);
@@ -79,22 +82,27 @@ int server(struct input_arg *arg,int runType)
         N = epoll_wait(EPoll, Events, MAX_EVENTS, -1); // -1 infinitive wait
 
         //TODO: check max_threads
-        omp_set_num_threads(N);
-        #pragma omp parallel for shared(Events, sServer, N)
+//#pragma omp parallel
+//        {
+//          int maxThread = omp_get_max_threads();
+//          int threads;
+//          threads = (N>maxThread) ? maxTread : N
+//          omp_set_num_threads(threads);
+//        #pragma omp parallel for shared(Events, sServer)
         for(i = 0; i < N; i++)
         {
-
-          //  if (check_errors(&Events[i]) == 1) { continue; } // error->connect close
+//           printf("th-n:%d\n",omp_get_thread_num());
+            if (check_errors(&Events[i])!=-1)
+            { // error->connect close
             if (Events[i].data.fd == sServer)
-            {
+            {  // adding / removing new connections
                 // if event on server then someone trying connects to the Server
                 struct sockaddr sClientAddr;
                 socklen_t sClientLen;
                 struct epoll_event Event;
                 int sClient;
                 sClientLen = sizeof sClientAddr;
-                char hostBuf[NI_MAXHOST];
-                char serverBuf[NI_MAXSERV];
+
                 //***ACCEPT*** CLIENT
                 sClient = accept(sServer, &sClientAddr, &sClientLen);
                 if (sClient == -1)
@@ -106,19 +114,13 @@ int server(struct input_arg *arg,int runType)
 					}
 					else { perror("accept");  }
                 }
-                int NameRes = getnameinfo(&sClientAddr, sClientLen,
-                		hostBuf, sizeof hostBuf,
-						serverBuf, sizeof serverBuf,
-						NI_NUMERICHOST | NI_NUMERICSERV);
-                if( NameRes == 0)
-                {
-                	printf ("Connected: %d, host=%s, port=%s\n", sClient, hostBuf, serverBuf);
-                }
+                printHostInfo(&sClientAddr, sClientLen, sClient);
+
 
                 set_nonblock(sClient);
                 // *** REGISTER CLIENT ***
                 Event.data.fd = sClient;
-                Event.events = EPOLLIN;
+                Event.events = EPOLLIN; // | EPOLLET | EPOLLONESHOT;
                 int epollClient = epoll_ctl(EPoll, EPOLL_CTL_ADD, sClient, &Event);
                 if (epollClient == -1 ){ perror ("epoll_ctl_Client");}
             }
@@ -140,14 +142,18 @@ int server(struct input_arg *arg,int runType)
                     int answerLen = strlen(answer);
                     int SendRes = send(Events[i].data.fd, answer, answerLen, MSG_NOSIGNAL);
                     if (SendRes == -1) { perror ("send2Client"); }
-                }
+                    int epollClientModify = epoll_ctl(EPoll, EPOLL_CTL_MOD, Events[i].data.fd, &Events[i]);
+                    if (epollClientModify  == -1) { perror("EPOLL_CTL_MOD");}
+                } // else if(RecvRes > 0 )
 
-            }
-        }
+            } // else  // try Read
+            } // if EBADF
+        } // for
+       // }  //parallel
         // signal -> r/w flags MSG_NOSIGNAL
         //   size_t sClientRecv = recv (sClient, &rbuf, rlen, rflags);
         //   size_t sClientSend = send(sClient, &wbuf, wlen, wflag);
-    }
+    } // while
 
 
     int shutRes = shutdown(sServer,SHUT_RDWR);
@@ -165,15 +171,37 @@ int check_errors(struct epoll_event *ee)
 	{
 		if (errno != EBADF)
 		{
-		//	perror("events error");
-		//	shutdown(ee->data.fd,SHUT_RDWR);
-		//	close (ee->data.fd);
+		perror("events error");
+		shutdown(ee->data.fd,SHUT_RDWR);
+		close (ee->data.fd);
 			return 1;
 		}
+		else
+		{
+				perror("events error");
+				return -1;
+		//	shutdown(ee->data.fd,SHUT_RDWR);
+		//	close (ee->data.fd);
+		}
 	}
+	if (errno == EBADF) return -1;
+
 	return 0;
 }
 
+ void printHostInfo(struct sockaddr *Addr, int Len, int fd)
+ {
+                char hostBuf[NI_MAXHOST];
+                char serverBuf[NI_MAXSERV];
+                int NameRes = getnameinfo(Addr, Len,
+                		hostBuf, sizeof hostBuf,
+						serverBuf, sizeof serverBuf,
+						NI_NUMERICHOST | NI_NUMERICSERV);
+                if( NameRes == 0)
+                {
+                	printf ("Connected: %d, host=%s, port=%s\n", fd, hostBuf, serverBuf);
+                }
+}
 //l 3.1 slide 9
 int set_nonblock(int sct)
 {
@@ -230,21 +258,11 @@ int timeout_send(int skt)
     return 0;
 }
 
-int GET()
+void test_parallel()
 {
-    return 0;
+#pragma omp parallel
+  {
+  printf ("mx:th:%d\n",omp_get_max_threads());
+  printf ("th:%d(%d)\n",omp_get_num_threads(),omp_get_thread_num());
+  }
 }
-
-int POST()
-{
-    return 0;
-}
-
-int MIME()
-{
-    return 0;
-}
-
-
-
-

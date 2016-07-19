@@ -42,6 +42,8 @@ const char * getResponse(const char *v, const char *dir)
     }
     char* http = (http10 == NULL)? (char*)http101: (char*)http10;
   //  printf("http protocol=%s\n", http);
+
+     // *** CHECK URL ***
     char* rawUrl = (char*)malloc(sizeof(char)*(http-get-4));
     memset(rawUrl,'\0', http-get-4);
     strncpy(rawUrl,(get+4), http-get-4);
@@ -57,7 +59,7 @@ const char * getResponse(const char *v, const char *dir)
     // *** NO PAGE ***
     if (strlen(url) < 2)
     {
-        return ok_response;
+        return bad_request_response;
     }
 
     // *** GET PAGE ***
@@ -77,8 +79,9 @@ const char * getResponse(const char *v, const char *dir)
     fd = fopen(fullname,"r");
     if (fd == NULL)
     {
-        return ok_response;
+        return bad_request_response;
     }
+
     fseek(fd,0L,SEEK_END);
     int fileSize = ftell(fd);
     rewind(fd);

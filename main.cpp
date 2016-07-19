@@ -7,12 +7,15 @@
 int run(int argc, char **argv);
 int test(int argc, char **argv);
 int debug_run(int argc, char **argv);
+int debug_run_hard();
+
 
 int main(int argc, char **argv)
 {
 //	test(argc, argv);
-//    debug_run(argc, argv);
-	run(argc, argv);
+ //  debug_run(argc, argv);
+   debug_run_hard();
+//	run(argc, argv);
 
 }
 
@@ -30,6 +33,18 @@ int debug_run(int argc, char **argv)
 	struct input_arg arg;
     initialize_arg(&arg);
     parse_input( argc, argv, &arg);
+    server(&arg,0);
+    return 0;
+}
+
+int debug_run_hard()
+{
+	struct input_arg arg;
+    initialize_arg(&arg);
+    arg.ip =(char*)"127.0.0.1";
+    arg.port=12345;
+    arg.dir = (char*)"/tmp";
+
     server(&arg,0);
     return 0;
 }
