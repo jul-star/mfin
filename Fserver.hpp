@@ -24,6 +24,7 @@ void printHostInfo(struct sockaddr *Addr, int Len, int fd);
 
 int server(struct input_arg *arg,int runType)
 {
+    const int bSize = 4096;
     test_parallel();
 
     if (runType) { daemon(0,0); }
@@ -82,13 +83,13 @@ int server(struct input_arg *arg,int runType)
         N = epoll_wait(EPoll, Events, MAX_EVENTS, -1); // -1 infinitive wait
 
         //TODO: check max_threads
-//#pragma omp parallel
-//        {
+#pragma omp parallel shared(EPoll, Events, sServer)
+        {
 //          int maxThread = omp_get_max_threads();
 //          int threads;
 //          threads = (N>maxThread) ? maxTread : N
-//          omp_set_num_threads(threads);
-//        #pragma omp parallel for shared(Events, sServer)
+          omp_set_num_threads(N);
+        #pragma omp for
         for(i = 0; i < N; i++)
         {
 //           printf("th-n:%d\n",omp_get_thread_num());
@@ -126,9 +127,8 @@ int server(struct input_arg *arg,int runType)
             }
             else  // try Read
             {
-            	const int bSize = 4096;
                 static char buf[bSize];
-                int RecvRes = recv(Events[i].data.fd, &buf, 4096, MSG_NOSIGNAL);
+                int RecvRes = recv(Events[i].data.fd, &buf, bSize, MSG_NOSIGNAL);
                 if (RecvRes == -1) { perror("recv4Clien"); }
                 // *** READ & WRITE
                 if ((RecvRes == 0 ) && (errno != EAGAIN))
@@ -149,7 +149,7 @@ int server(struct input_arg *arg,int runType)
             } // else  // try Read
             } // if EBADF
         } // for
-       // }  //parallel
+       }  //parallel
         // signal -> r/w flags MSG_NOSIGNAL
         //   size_t sClientRecv = recv (sClient, &rbuf, rlen, rflags);
         //   size_t sClientSend = send(sClient, &wbuf, wlen, wflag);
