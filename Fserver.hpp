@@ -83,12 +83,12 @@ int server(struct input_arg *arg,int runType)
         N = epoll_wait(EPoll, Events, MAX_EVENTS, -1); // -1 infinitive wait
 
         //TODO: check max_threads
-#pragma omp parallel shared(EPoll, Events, sServer)
-        {
+//#pragma omp parallel shared(EPoll, Events, sServer)
+//        {
 //          int maxThread = omp_get_max_threads();
 //          int threads;
 //          threads = (N>maxThread) ? maxTread : N
-        #pragma omp for num_threads(N)
+//        #pragma omp for
         for(i = 0; i < N; i++)
         {
 //           printf("th-n:%d\n",omp_get_thread_num());
@@ -148,7 +148,7 @@ int server(struct input_arg *arg,int runType)
             } // else  // try Read
             } // if EBADF
         } // for
-       }  //parallel
+ //      }  //parallel
         // signal -> r/w flags MSG_NOSIGNAL
         //   size_t sClientRecv = recv (sClient, &rbuf, rlen, rflags);
         //   size_t sClientSend = send(sClient, &wbuf, wlen, wflag);
